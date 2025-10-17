@@ -1167,7 +1167,7 @@
 
             downloadBtn.addEventListener('click', () => {
                 if (generatedPresentation) {
-                    generatedPresentation.generateAsync({ type: 'blob' }).then((blob) => {
+                    generatedPresentation.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }).then((blob) => {
                         saveAs(blob, 'generated_presentation.pptx');
                         showToast('Download Started', 'Your presentation is being downloaded...', 'success');
                     });
@@ -1583,7 +1583,7 @@
             zip.file('ppt/viewProps.xml', viewProps);
             zip.file('ppt/tableStyles.xml', tableStyles);
 
-            zip.generateAsync({ type: 'blob' }).then((blob) => {
+            zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }).then((blob) => {
                 saveAs(blob, 'sample_template.pptx');
                 showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
             });
@@ -1621,7 +1621,7 @@
             XLSX.utils.book_append_sheet(wb, ws2, 'ChartData');
             
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             
             saveAs(blob, 'sample_data.xlsx');
             showToast('Sample Downloaded', 'Sample Excel data downloaded successfully', 'success');
