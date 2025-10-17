@@ -6,7 +6,50 @@
     <title>Presentr - PowerPoint AutoFill (Offline)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js"></script>
+    <!-- Try multiple CDNs for PptxGenJS with better error handling -->
+    <script>
+        // Load PptxGenJS with fallback
+        function loadPptxGenJS() {
+            return new Promise((resolve, reject) => {
+                const cdns = [
+                    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js',
+                    'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgenjs.bundle.js'
+                ];
+                
+                let currentCdn = 0;
+                
+                function tryNextCdn() {
+                    if (currentCdn >= cdns.length) {
+                        reject(new Error('All CDNs failed to load PptxGenJS'));
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = cdns[currentCdn];
+                    script.onload = () => {
+                        if (typeof PptxGenJS !== 'undefined') {
+                            resolve();
+                        } else {
+                            currentCdn++;
+                            tryNextCdn();
+                        }
+                    };
+                    script.onerror = () => {
+                        currentCdn++;
+                        tryNextCdn();
+                    };
+                    
+                    document.head.appendChild(script);
+                }
+                
+                tryNextCdn();
+            });
+        }
+        
+        // Start loading immediately
+        loadPptxGenJS().catch(err => console.error('Failed to load PptxGenJS:', err));
+    </script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -287,10 +330,32 @@
                 return false;
             }
             if (typeof PptxGenJS === 'undefined') {
-                showError('PptxGenJS library failed to load. Please refresh the page.');
+                showError('PptxGenJS library failed to load. Please refresh the page or check your internet connection.');
+                console.error('PptxGenJS not loaded. Available objects:', Object.keys(window));
                 return false;
             }
             return true;
+        }
+
+        // Wait for libraries to load with timeout
+        function waitForLibraries() {
+            return new Promise((resolve) => {
+                let attempts = 0;
+                const maxAttempts = 50; // 5 seconds max
+                
+                const checkInterval = setInterval(() => {
+                    attempts++;
+                    
+                    if (typeof XLSX !== 'undefined' && typeof PptxGenJS !== 'undefined') {
+                        clearInterval(checkInterval);
+                        resolve(true);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        console.error('Library loading timeout. XLSX:', typeof XLSX, 'PptxGenJS:', typeof PptxGenJS);
+                        resolve(false);
+                    }
+                }, 100);
+            });
         }
 
         function showError(message) {
@@ -304,12 +369,57 @@
         let generatedPresentation = null;
 
         // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check libraries first
-            if (!checkLibraries()) {
-                return;
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Wait for PptxGenJS to load
+                await loadPptxGenJS();
+                
+                // Wait for all libraries to be available
+                const librariesLoaded = await waitForLibraries();
+                
+                if (!librariesLoaded || !checkLibraries()) {
+                    showLoadingError();
+                    return;
+                }
+                
+                // Libraries loaded successfully, initialize app
+                initializeApp();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showLoadingError();
             }
-            
+        });
+
+        function showLoadingError() {
+            // Show a more user-friendly error in the UI
+            document.body.innerHTML = `
+                <div class="min-h-screen gradient-bg flex items-center justify-center">
+                    <div class="glass-effect rounded-2xl shadow-xl p-8 max-w-md">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4">Loading Error</h2>
+                            <p class="text-gray-600 mb-6">Required libraries failed to load. This might be due to a network issue or browser restrictions.</p>
+                            <div class="space-y-3">
+                                <button onclick="window.location.reload()" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200">
+                                    Refresh Page
+                                </button>
+                                <button onclick="window.open('https://github.com/moZaky/Presentr', '_blank')" class="w-full bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-200">
+                                    View on GitHub
+                                </button>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-4">If the problem persists, try downloading the file and opening it locally.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initializeApp() {
             setupFileUpload();
             setupDragAndDrop();
             setupProcessButton();
@@ -321,7 +431,7 @@
                     el.style.opacity = '1';
                 }, index * 200);
             });
-        });
+        }
 
         // File upload setup
         function setupFileUpload() {
