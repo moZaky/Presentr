@@ -6,7 +6,7 @@
     <title>Presentr - PowerPoint AutoFill (Offline)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js"></script>
+    <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -280,6 +280,24 @@
     </footer>
 
     <script>
+        // Check if required libraries are loaded
+        function checkLibraries() {
+            if (typeof XLSX === 'undefined') {
+                showError('XLSX library failed to load. Please refresh the page.');
+                return false;
+            }
+            if (typeof PptxGenJS === 'undefined') {
+                showError('PptxGenJS library failed to load. Please refresh the page.');
+                return false;
+            }
+            return true;
+        }
+
+        function showError(message) {
+            alert('Error: ' + message);
+            console.error(message);
+        }
+
         // Global variables
         let pptFile = null;
         let excelFile = null;
@@ -287,6 +305,11 @@
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            // Check libraries first
+            if (!checkLibraries()) {
+                return;
+            }
+            
             setupFileUpload();
             setupDragAndDrop();
             setupProcessButton();
@@ -463,6 +486,11 @@
 
         // Create presentation
         async function createPresentation(data) {
+            // Double-check that PptxGenJS is available
+            if (typeof PptxGenJS === 'undefined') {
+                throw new Error('PptxGenJS library is not loaded');
+            }
+            
             const pptx = new PptxGenJS();
             
             // Set properties
@@ -732,6 +760,11 @@
         // Create sample PowerPoint content
         async function createSamplePowerPoint() {
             try {
+                // Check that PptxGenJS is available
+                if (typeof PptxGenJS === 'undefined') {
+                    throw new Error('PptxGenJS library is not loaded');
+                }
+                
                 const pptx = new PptxGenJS();
                 pptx.author = 'Presentr - PowerPoint AutoFill';
                 pptx.title = 'Sample Template';
