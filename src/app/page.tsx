@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { useToast } from '@/hooks/use-toast'
+import { Toaster } from '@/components/ui/toaster'
 import { 
   Upload, 
   FileText, 
@@ -26,12 +28,23 @@ export default function Home() {
   const [processedFile, setProcessedFile] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle')
+  const { toast } = useToast()
 
   const handlePptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || file.name.endsWith('.pptx'))) {
       setPptFile(file)
       setStatus('idle')
+      toast({
+        title: "PowerPoint uploaded",
+        description: `${file.name} has been uploaded successfully.`,
+      })
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a .pptx file.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -40,15 +53,37 @@ export default function Home() {
     if (file && (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx'))) {
       setExcelFile(file)
       setStatus('idle')
+      toast({
+        title: "Excel file uploaded",
+        description: `${file.name} has been uploaded successfully.`,
+      })
+    } else if (file) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a .xlsx file.",
+        variant: "destructive",
+      })
     }
   }
 
   const processFiles = async () => {
-    if (!pptFile || !excelFile) return
+    if (!pptFile || !excelFile) {
+      toast({
+        title: "Files missing",
+        description: "Please upload both PowerPoint and Excel files.",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsProcessing(true)
     setStatus('processing')
     setProgress(0)
+
+    toast({
+      title: "Processing started",
+      description: "Your files are being processed...",
+    })
 
     try {
       const formData = new FormData()
@@ -79,11 +114,25 @@ export default function Home() {
         const url = URL.createObjectURL(blob)
         setProcessedFile(url)
         setStatus('completed')
+        toast({
+          title: "Processing complete!",
+          description: "Your PowerPoint has been generated successfully.",
+        })
       } else {
         setStatus('error')
+        toast({
+          title: "Processing failed",
+          description: "There was an error processing your files. Please try again.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       setStatus('error')
+      toast({
+        title: "Processing failed",
+        description: "Network error. Please check your connection and try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsProcessing(false)
     }
@@ -97,6 +146,11 @@ export default function Home() {
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+      
+      toast({
+        title: "Download started",
+        description: "Your PowerPoint file is being downloaded.",
+      })
     }
   }
 
@@ -362,6 +416,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      <Toaster />
     </div>
   )
 }
