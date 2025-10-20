@@ -153,6 +153,9 @@
     </style>
 </head>
 <body class="min-h-screen gradient-bg">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <!-- Header -->
     <header class="glass-effect shadow-lg">
         <div class="container mx-auto px-4 py-4">
@@ -314,7 +317,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6m9 4h.01"></path>
                             </svg>
                             <div>
-                                <div class="font-medium text-gray-800">Sample Excel Data</div>
+                                <div class="font-medium text-gray-800">Sample Excel</div>
                                 <div class="text-sm text-gray-600">Data with chart information</div>
                             </div>
                         </div>
@@ -325,17 +328,13 @@
     </main>
 
     <!-- Footer -->
-    <footer class="glass-effect mt-16">
+    <footer class="glass-effect shadow-lg mt-16">
         <div class="container mx-auto px-4 py-6">
-            <div class="text-center text-gray-600">
-                <p>Presentr - PowerPoint AutoFill | Works Completely Offline</p>
-                <p class="text-sm mt-2">Transform your data into professional presentations instantly</p>
+            <div class="text-center">
+                <p class="text-gray-600">Presentr - PowerPoint AutoFill | Works Completely Offline</p>
             </div>
         </div>
     </footer>
-
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
 
     <script>
         // Global variables
@@ -350,21 +349,19 @@
             toast.className = `toast ${type}`;
             
             toast.innerHTML = `
-                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
                 <div class="toast-title">${title}</div>
                 <div class="toast-message">${message}</div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
             `;
             
             toastContainer.appendChild(toast);
             
             // Auto remove after 5 seconds
             setTimeout(() => {
-                toast.style.animation = 'slideOutRight 0.3s ease-out';
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 300);
+                if (toast.parentElement) {
+                    toast.style.animation = 'slideOutRight 0.3s ease-out';
+                    setTimeout(() => toast.remove(), 300);
+                }
             }, 5000);
         }
 
@@ -373,14 +370,8 @@
             setupFileUpload();
             setupDragAndDrop();
             setupProcessButton();
-            setupDownloadButtons();
-            
-            // Add fade-in animation to elements
-            document.querySelectorAll('.fade-in').forEach((el, index) => {
-                setTimeout(() => {
-                    el.style.opacity = '1';
-                }, index * 200);
-            });
+            setupDownloadButton();
+            setupSampleDownloads();
         });
 
         // File upload setup
@@ -510,22 +501,14 @@
                     updateProgress(20, 'Reading Excel data...');
                     const excelData = await readExcelFile(excelFile);
                     
-                    updateProgress(40, 'Reading PowerPoint template...');
-                    const pptTemplate = await readPowerPointTemplate(pptFile);
-
-                    // Step 2: Process data
-                    updateProgress(60, 'Processing data and generating slides...');
+                    updateProgress(40, 'Processing data...');
                     const presentation = await createSimplePresentation(excelData);
 
-                    // Step 3: Generate charts
-                    updateProgress(80, 'Generating charts...');
-                    await generateCharts(presentation, excelData.chartData);
-
-                    // Step 4: Finalize presentation
-                    updateProgress(90, 'Finalizing presentation...');
+                    // Step 2: Generate presentation
+                    updateProgress(80, 'Generating presentation...');
                     generatedPresentation = presentation;
 
-                    // Step 5: Complete
+                    // Step 3: Complete
                     updateProgress(100, 'Complete!');
                     
                     showToast('Processing Complete', 'Your PowerPoint presentation has been generated successfully!', 'success');
@@ -545,6 +528,24 @@
                     processLoader.classList.add('hidden');
                     processBtnText.textContent = 'Process Files';
                     updateProcessButton();
+                }
+            });
+        }
+
+        // Setup download button
+        function setupDownloadButton() {
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.addEventListener('click', () => {
+                if (generatedPresentation) {
+                    generatedPresentation.writeFile({ fileName: 'generated_presentation.pptx' })
+                        .then(() => {
+                            showToast('Download Complete', 'PowerPoint presentation downloaded successfully!', 'success');
+                        })
+                        .catch(error => {
+                            showToast('Download Error', 'Failed to download presentation: ' + error.message, 'error');
+                        });
+                } else {
+                    showToast('Error', 'No presentation available for download', 'error');
                 }
             });
         }
@@ -579,7 +580,7 @@
                         }
 
                         // Read chart data sheet
-                        if (workbook.SheetNames.length > 1) {
+                        if (workbook.SheetNames.includes('ChartData')) {
                             const chartSheet = workbook.Sheets['ChartData'];
                             if (chartSheet) {
                                 const chartData = XLSX.utils.sheet_to_json(chartSheet);
@@ -591,24 +592,6 @@
                     } catch (error) {
                         reject(error);
                     }
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        // Read PowerPoint template (simplified)
-        async function readPowerPointTemplate(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // For now, we'll create a simple template
-                    resolve({
-                        slides: [
-                            { type: 'title', placeholders: ['{project_title}', '{name}'] },
-                            { type: 'content', placeholders: ['{status_update}'] },
-                            { type: 'agenda', placeholders: ['{agenda}'] }
-                        ]
-                    });
                 };
                 reader.readAsArrayBuffer(file);
             });
@@ -793,7 +776,16 @@
             });
             
             return chartData;
-          }
+        }
+
+        // Setup sample downloads
+        function setupSampleDownloads() {
+            // Sample PowerPoint download
+            document.getElementById('downloadSamplePPT').addEventListener('click', createSamplePowerPoint);
+            
+            // Sample Excel download
+            document.getElementById('downloadSampleExcel').addEventListener('click', createSampleExcel);
+        }
 
         // Create sample PowerPoint using PptxGenJS
         function createSamplePowerPoint() {
@@ -805,16 +797,6 @@
                 pptx.author = 'Presentr - PowerPoint AutoFill';
                 pptx.company = 'AutoFill System';
                 pptx.title = 'Sample PowerPoint Template';
-                
-                // Sample data for placeholders
-                const sampleData = {
-                    project_title: '{project_title}',
-                    name: '{name}',
-                    date: '{date}',
-                    status_update: '{status_update}',
-                    agenda: '{agenda}',
-                    ChartTitle: '{ChartTitle}'
-                };
                 
                 // Helper function to show placeholders
                 const showPlaceholders = (text) => text;
@@ -860,7 +842,7 @@
                     { x: 0.5, y: 1.5, w: 9, h: 4, fontSize: 18, color: '444444', valign: 'top', wrapText: true }
                 );
                 
-                // Slide 4: Chart Title Placeholder
+                // Slide 4: Chart Title
                 const slide4 = pptx.addSlide();
                 slide4.addText(
                     showPlaceholders('{ChartTitle}'),
@@ -869,458 +851,66 @@
                 
                 slide4.addText(
                     'This is a placeholder slide. The title above will be filled from your Excel data. Charts defined in the \'ChartData\' sheet will be added as new slides following this one.',
-                    { x: 0.5, y: 1.5, w: 9, h: 3, fontSize: 16, color: '666666', valign: 'top', wrapText: true }
+                    { x: 0.5, y: 1.5, w: 9, h: 2, fontSize: 16, color: '666666', valign: 'top', wrapText: true }
                 );
                 
-                // Generate and download the presentation
-                pptx.writeFile({ fileName: 'sample_template.pptx' }).then((fileName) => {
-                    showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
-                }).catch((error) => {
-                    console.error('Error generating PowerPoint:', error);
-                    showToast('Generation Error', 'Failed to generate PowerPoint template', 'error');
-                });
+                // Download the file
+                pptx.writeFile({ fileName: 'sample_template.pptx' })
+                    .then(() => {
+                        showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
+                    })
+                    .catch(error => {
+                        showToast('Download Error', 'Failed to download sample: ' + error.message, 'error');
+                    });
                 
             } catch (error) {
-                console.error('Error in createSamplePowerPoint:', error);
+                console.error('Error creating sample PowerPoint:', error);
                 showToast('Error', 'Failed to create sample PowerPoint: ' + error.message, 'error');
             }
         }
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-presentationml.presentation.main+xml"/>
-    <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-presentationml.slide+xml"/>
-    <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
-    <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-presentationml.slideMaster+xml"/>
-    <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-presentationml.slideLayout+xml"/>
-    <Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-presentationml.presProps+xml"/>
-    <Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-presentationml.viewProps+xml"/>
-    <Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-presentationml.tableStyles+xml"/>
-</Types>`;
 
-            const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
-</Relationships>`;
-
-            const presentation = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:sldMasterIdLst>
-        <p:sldMasterId id="2147483648" r:id="rId1"/>
-    </p:sldMasterIdLst>
-    <p:sldIdLst>
-        <p:sldId id="256" r:id="rId2"/>
-    </p:sldIdLst>
-    <p:sldSz cx="9144000" cy="6858000"/>
-    <p:notesSz cx="6858000" cy="9144000"/>
-    <p:defaultTextStyle>
-        <a:defPPr>
-            <a:defRPr lang="en-US"/>
-        </a:defPPr>
-    </p:defaultTextStyle>
-</p:presentation>`;
-
-            const pptRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
-    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
-    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
-    <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/>
-    <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/>
-    <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>
-</Relationships>`;
-
-            const slide1 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:cSld>
-        <p:spTree>
-            <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
-            <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
-            <p:sp>
-                <p:nvSpPr><p:cNvPr id="2" name="Title 1"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
-                <p:spPr><a:xfrm><a:off x="2880000" y="1745625"/><a:ext cx="6858000" cy="1143000"/></a:xfrm></p:spPr>
-                <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="4400" b="1"/><a:t>{project_title}</a:t></a:r></a:p></p:txBody>
-            </p:sp>
-            <p:sp>
-                <p:nvSpPr><p:cNvPr id="3" name="Subtitle 2"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr>
-                <p:spPr><a:xfrm><a:off x="2880000" y="3200400"/><a:ext cx="6858000" cy="1397000"/></a:xfrm></p:spPr>
-                <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="2800"/><a:t>Status Report prepared by: {name}</a:t></a:r></a:p></p:txBody>
-            </p:sp>
-        </p:spTree>
-    </p:cSld>
-    <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-</p:sld>`;
-
-            const theme = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
-    <a:themeElements>
-        <a:clrScheme name="Office">
-            <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1>
-            <a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
-            <a:dk2><a:srgbClr val="44546A"/></a:dk2>
-            <a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>
-            <a:accent1><a:srgbClr val="4472C4"/></a:accent1>
-            <a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
-            <a:accent3><a:srgbClr val="A5A5A5"/></a:accent3>
-            <a:accent4><a:srgbClr val="FFC000"/></a:accent4>
-            <a:accent5><a:srgbClr val="5B9BD5"/></a:accent5>
-            <a:accent6><a:srgbClr val="70AD47"/></a:accent6>
-            <a:hlink><a:srgbClr val="0563C1"/></a:hlink>
-            <a:folHlink><a:srgbClr val="954F72"/></a:folHlink>
-        </a:clrScheme>
-        <a:fontScheme name="Office">
-            <a:majorFont>
-                <a:latin typeface="Calibri Light" panose="020F0302020204030204"/>
-                <a:ea typeface=""/><a:cs typeface=""/>
-                <a:font script="Jpan" typeface="Yu Mincho"/>
-                <a:font script="Hang" typeface="Malgun Gothic"/>
-                <a:font script="Hans" typeface="DengXian"/>
-                <a:font script="Hant" typeface="Microsoft JhengHei"/>
-                <a:font script="Arab" typeface="Arial"/>
-                <a:font script="Hebr" typeface="Arial"/>
-                <a:font script="Thai" typeface="Tahoma"/>
-                <a:font script="Ethi" typeface="Nyala"/>
-                <a:font script="Beng" typeface="Vrinda"/>
-                <a:font script="Gujr" typeface="Shruti"/>
-                <a:font script="Guru" typeface="Raavi"/>
-                <a:font script="Knda" typeface="Tunga"/>
-                <a:font script="Mlym" typeface="Kartika"/>
-                <a:font script="Orya" typeface="Kalinga"/>
-                <a:font script="Taml" typeface="Latha"/>
-                <a:font script="Telu" typeface="Gautami"/>
-                <a:font script="Armn" typeface="Arial"/>
-                <a:font script="Bugi" typeface="Leelawadee UI"/>
-                <a:font script="Bopo" typeface="Microsoft JhengHei"/>
-                <a:font script="CJK" typeface="Microsoft YaHei"/>
-                <a:font script="Geor" typeface="Sylfaen"/>
-                <a:font script="Khmr" typeface="Leelawadee UI"/>
-                <a:font script="Laoo" typeface="Leelawadee UI"/>
-                <a:font script="Sinh" typeface="Iskoola Pota"/>
-                <a:font script="Syrc" typeface="Estrangelo Edessa"/>
-                <a:font script="Thaa" typeface="Leelawadee UI"/>
-                <a:font script="Tibt" typeface="Microsoft Himalaya"/>
-                <a:font script="Tale" typeface="Leelawadee UI"/>
-                <a:font script="Tfng" typeface="Leelawadee UI"/>
-            </a:majorFont>
-            <a:minorFont>
-                <a:latin typeface="Calibri" panose="020F0502020204030204"/>
-                <a:ea typeface=""/><a:cs typeface=""/>
-                <a:font script="Jpan" typeface="Yu Mincho"/>
-                <a:font script="Hang" typeface="Malgun Gothic"/>
-                <a:font script="Hans" typeface="DengXian"/>
-                <a:font script="Hant" typeface="Microsoft JhengHei"/>
-                <a:font script="Arab" typeface="Arial"/>
-                <a:font script="Hebr" typeface="Arial"/>
-                <a:font script="Thai" typeface="Tahoma"/>
-                <a:font script="Ethi" typeface="Nyala"/>
-                <a:font script="Beng" typeface="Vrinda"/>
-                <a:font script="Gujr" typeface="Shruti"/>
-                <a:font script="Guru" typeface="Raavi"/>
-                <a:font script="Knda" typeface="Tunga"/>
-                <a:font script="Mlym" typeface="Kartika"/>
-                <a:font script="Orya" typeface="Kalinga"/>
-                <a:font script="Taml" typeface="Latha"/>
-                <a:font script="Telu" typeface="Gautami"/>
-                <a:font script="Armn" typeface="Arial"/>
-                <a:font script="Bugi" typeface="Leelawadee UI"/>
-                <a:font script="Bopo" typeface="Microsoft JhengHei"/>
-                <a:font script="CJK" typeface="Microsoft YaHei"/>
-                <a:font script="Geor" typeface="Sylfaen"/>
-                <a:font script="Khmr" typeface="Leelawadee UI"/>
-                <a:font script="Laoo" typeface="Leelawadee UI"/>
-                <a:font script="Sinh" typeface="Iskoola Pota"/>
-                <a:font script="Syrc" typeface="Estrangelo Edessa"/>
-                <a:font script="Thaa" typeface="Leelawadee UI"/>
-                <a:font script="Tibt" typeface="Microsoft Himalaya"/>
-                <a:font script="Tale" typeface="Leelawadee UI"/>
-                <a:font script="Tfng" typeface="Leelawadee UI"/>
-            </a:minorFont>
-        </a:fontScheme>
-        <a:fmtScheme name="Office">
-            <a:fillStyleLst>
-                <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                <a:gradFill rotWithShape="1">
-                    <a:gsLst>
-                        <a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="110000"/><a:satMod val="105000"/><a:tint val="67000"/></a:schemeClr></a:gs>
-                        <a:gs pos="50000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="103000"/><a:tint val="73000"/></a:schemeClr></a:gs>
-                        <a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="109000"/><a:tint val="94000"/></a:schemeClr></a:gs>
-                    </a:gsLst>
-                    <a:lin ang="5400000" scaled="0"/>
-                </a:gradFill>
-                <a:gradFill rotWithShape="1">
-                    <a:gsLst>
-                        <a:gs pos="0"><a:schemeClr val="phClr"><a:satMod val="103000"/><a:lumMod val="102000"/><a:tint val="94000"/></a:schemeClr></a:gs>
-                        <a:gs pos="50000"><a:schemeClr val="phClr"><a:satMod val="110000"/><a:lumMod val="100000"/><a:shade val="100000"/></a:schemeClr></a:gs>
-                        <a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="99000"/><a:satMod val="120000"/><a:shade val="78000"/></a:schemeClr></a:gs>
-                    </a:gsLst>
-                    <a:lin ang="5400000" scaled="0"/>
-                </a:gradFill>
-            </a:fillStyleLst>
-            <a:lnStyleLst>
-                <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr">
-                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                    <a:prstDash val="solid"/>
-                    <a:miter lim="800000"/>
-                </a:ln>
-                <a:ln w="12700" cap="flat" cmpd="sng" algn="ctr">
-                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                    <a:prstDash val="solid"/>
-                    <a:miter lim="800000"/>
-                </a:ln>
-                <a:ln w="19050" cap="flat" cmpd="sng" algn="ctr">
-                    <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                    <a:prstDash val="solid"/>
-                    <a:miter lim="800000"/>
-                </a:ln>
-            </a:lnStyleLst>
-            <a:effectStyleLst>
-                <a:effectStyle>
-                    <a:effectLst>
-                        <a:outerShdw blurRad="40000" dist="20000" dir="5400000" rotWithShape="0">
-                            <a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr>
-                        </a:outerShdw>
-                    </a:effectLst>
-                </a:effectStyle>
-                <a:effectStyle>
-                    <a:effectLst>
-                        <a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0">
-                            <a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr>
-                        </a:outerShdw>
-                    </a:effectLst>
-                </a:effectStyle>
-                <a:effectStyle>
-                    <a:effectLst>
-                        <a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0">
-                            <a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr>
-                        </a:outerShdw>
-                    </a:effectLst>
-                    <a:scene3d>
-                        <a:camera prst="orthographicFront"><a:rot lat="0" lon="0" rev="0"/></a:camera>
-                        <a:lightRig rig="threePt" dir="t"><a:rot lat="0" lon="0" rev="1200000"/></a:lightRig>
-                    </a:scene3d>
-                    <a:sp3d><a:bevelT w="63500" h="25400"/></a:sp3d>
-                </a:effectStyle>
-            </a:effectStyleLst>
-            <a:bgFillStyleLst>
-                <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
-                <a:gradFill rotWithShape="1">
-                    <a:gsLst>
-                        <a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="40000"/><a:satMod val="350000"/></a:schemeClr></a:gs>
-                        <a:gs pos="40000"><a:schemeClr val="phClr"><a:tint val="45000"/><a:shade val="99000"/><a:satMod val="350000"/></a:schemeClr></a:gs>
-                        <a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="20000"/><a:satMod val="255000"/></a:schemeClr></a:gs>
-                    </a:gsLst>
-                    <a:path path="circle"><a:fillToRect l="50000" t="-80000" r="50000" b="180000"/></a:path>
-                </a:gradFill>
-                <a:gradFill rotWithShape="1">
-                    <a:gsLst>
-                        <a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="80000"/><a:satMod val="300000"/></a:schemeClr></a:gs>
-                        <a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="30000"/><a:satMod val="200000"/></a:schemeClr></a:gs>
-                    </a:gsLst>
-                    <a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>
-                </a:gradFill>
-            </a:bgFillStyleLst>
-        </a:fmtScheme>
-    </a:themeElements>
-    <a:objectDefaults/>
-    <a:extraClrSchemeLst/>
-</a:theme>`;
-
-            const slideMaster = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:cSld>
-        <p:spTree>
-            <p:nvGrpSpPr>
-                <p:cNvPr id="1" name=""/>
-                <p:cNvGrpSpPr/>
-                <p:nvPr/>
-            </p:nvGrpSpPr>
-            <p:grpSpPr>
-                <a:xfrm>
-                    <a:off x="0" y="0"/>
-                    <a:ext cx="0" cy="0"/>
-                    <a:chOff x="0" y="0"/>
-                    <a:chExt cx="0" cy="0"/>
-                </a:xfrm>
-            </p:grpSpPr>
-            <p:sp>
-                <p:nvSpPr>
-                    <p:cNvPr id="2" name="Title Placeholder 1"/>
-                    <p:cNvSpPr>
-                        <a:spLocks noGrp="1"/>
-                    </p:cNvSpPr>
-                    <p:nvPr>
-                        <p:ph type="title"/>
-                    </p:nvPr>
-                </p:nvSpPr>
-                <p:spPr/>
-                <p:txBody>
-                    <a:bodyPr/>
-                    <a:lstStyle/>
-                    <a:p>
-                        <a:r>
-                            <a:rPr lang="en-US"/>
-                            <a:t>Title</a:t>
-                        </a:r>
-                    </a:p>
-                </p:txBody>
-            </p:sp>
-        </p:spTree>
-    </p:cSld>
-    <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
-</p:sldMaster>`;
-
-            const slideLayout = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:cSld>
-        <p:spTree>
-            <p:nvGrpSpPr>
-                <p:cNvPr id="1" name=""/>
-                <p:cNvGrpSpPr/>
-                <p:nvPr/>
-            </p:nvGrpSpPr>
-            <p:grpSpPr>
-                <a:xfrm>
-                    <a:off x="0" y="0"/>
-                    <a:ext cx="0" cy="0"/>
-                    <a:chOff x="0" y="0"/>
-                    <a:chExt cx="0" cy="0"/>
-                </a:xfrm>
-            </p:grpSpPr>
-            <p:sp>
-                <p:nvSpPr>
-                    <p:cNvPr id="2" name="Title Placeholder 1"/>
-                    <p:cNvSpPr>
-                        <a:spLocks noGrp="1"/>
-                    </p:cNvSpPr>
-                    <p:nvPr>
-                        <p:ph type="title"/>
-                    </p:nvPr>
-                </p:nvSpPr>
-                <p:spPr/>
-                <p:txBody>
-                    <a:bodyPr/>
-                    <a:lstStyle/>
-                    <a:p>
-                        <a:r>
-                            <a:rPr lang="en-US"/>
-                            <a:t>Title</a:t>
-                        </a:r>
-                    </a:p>
-                </p:txBody>
-            </p:sp>
-        </p:spTree>
-    </p:cSld>
-</p:sldLayout>`;
-
-            const presProps = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:extLst>
-        <p:ext uri="{E76CE94A-603C-4142-B9EB-6D1370010A27}">
-            <p14:discardImageEditData xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="0"/>
-        </p:ext>
-    </p:extLst>
-</p:presentationPr>`;
-
-            const viewProps = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-    <p:normalViewPr>
-        <p:restoredLeft sz="15628"/>
-        <p:restoredTop sz="9463"/>
-    </p:normalViewPr>
-    <p:slideViewPr>
-        <p:cSldViewPr>
-            <p:cViewPr var="normalView">
-                <p:scale>
-                    <a:sx n="100" d="100"/>
-                    <a:sy n="100" d="100"/>
-                </p:scale>
-                <p:origin x="0" y="0"/>
-            </p:cViewPr>
-        </p:cSldViewPr>
-        <p:guideLst/>
-    </p:slideViewPr>
-    <p:notesTextViewPr>
-        <p:cViewPr var="notesView">
-            <p:scale>
-                <a:sx n="100" d="100"/>
-                <a:sy n="100" d="100"/>
-            </p:scale>
-            <p:origin x="0" y="0"/>
-        </p:cViewPr>
-    </p:notesTextViewPr>
-    <p:gridSpacing cx="76200" cy="76200"/>
-</p:viewPr>`;
-
-            const tableStyles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}">
-    <a:tblStyle styleId="5C22544A-7EE6-4342-B048-85BDC9FD1C3A" name="Medium Style 2 - Accent 1">
-        <a:wholeTbl>
-            <a:fill>
-                <a:solidFill>
-                    <a:schemeClr val="accent1">
-                        <a:lumMod val="40000"/>
-                        <a:lumOff val="60000"/>
-                    </a:schemeClr>
-                </a:solidFill>
-            </a:fill>
-        </a:wholeTbl>
-    </a:tblStyle>
-</a:tblStyleLst>`;
-
-            zip.file('[Content_Types].xml', contentTypes);
-            zip.file('_rels/.rels', rels);
-            zip.file('ppt/_rels/presentation.xml.rels', pptRels);
-            zip.file('ppt/presentation.xml', presentation);
-            zip.file('ppt/slides/slide1.xml', slide1);
-            zip.file('ppt/theme/theme1.xml', theme);
-            zip.file('ppt/slideMasters/slideMaster1.xml', slideMaster);
-            zip.file('ppt/slideLayouts/slideLayout1.xml', slideLayout);
-            zip.file('ppt/presProps.xml', presProps);
-            zip.file('ppt/viewProps.xml', viewProps);
-            zip.file('ppt/tableStyles.xml', tableStyles);
-
-            zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }).then((blob) => {
-                saveAs(blob, 'sample_template.pptx');
-                showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
-            });
-        }
-
-        // Create sample Excel
+        // Create sample Excel file
         function createSampleExcel() {
-            const wb = XLSX.utils.book_new();
-            
-            // Main data sheet
-            const mainData = [
-                {
-                    name: 'zinab',
-                    project_title: 'DGE Review',
-                    status_update: 'All financial models have been updated, and the initial report draft is complete. We are on schedule for the board meeting next week.',
-                    agenda: 'Technology Stack System Context Design Decisions Mobile Application Features',
-                    ChartTitle: 'Analysis of Key Metrics'
-                }
-            ];
-            
-            const ws1 = XLSX.utils.json_to_sheet(mainData);
-            XLSX.utils.book_append_sheet(wb, ws1, 'Sheet1');
-            
-            // Chart data sheet
-            const chartData = [
-                { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q1', Label: '', Value: 150 },
-                { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q2', Label: '', Value: 200 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Jan', Value: 1200 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Feb', Value: 1800 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Jan', Value: 400 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Feb', Value: 500 }
-            ];
-            
-            const ws2 = XLSX.utils.json_to_sheet(chartData);
-            XLSX.utils.book_append_sheet(wb, ws2, 'ChartData');
-            
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            
-            saveAs(blob, 'sample_data.xlsx');
-            showToast('Sample Downloaded', 'Sample Excel data downloaded successfully', 'success');
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                // Main data sheet
+                const mainData = [
+                    {
+                        name: 'zinab',
+                        project_title: 'DGE Review',
+                        status_update: 'All financial models have been updated, and the initial report draft is complete. We are on schedule for the board meeting next week.',
+                        agenda: 'Technology Stack System Context Design Decisions Mobile Application Features',
+                        ChartTitle: 'Analysis of Key Metrics'
+                    }
+                ];
+                
+                const ws1 = XLSX.utils.json_to_sheet(mainData);
+                XLSX.utils.book_append_sheet(wb, ws1, 'Sheet1');
+                
+                // Chart data sheet
+                const chartData = [
+                    { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q1', Label: '', Value: 150 },
+                    { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q2', Label: '', Value: 200 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Jan', Value: 1200 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Feb', Value: 1800 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Jan', Value: 400 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Feb', Value: 500 }
+                ];
+                
+                const ws2 = XLSX.utils.json_to_sheet(chartData);
+                XLSX.utils.book_append_sheet(wb, ws2, 'ChartData');
+                
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                
+                saveAs(blob, 'sample_data.xlsx');
+                showToast('Sample Downloaded', 'Sample Excel data downloaded successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error creating sample Excel:', error);
+                showToast('Error', 'Failed to create sample Excel: ' + error.message, 'error');
+            }
         }
     </script>
 </body>

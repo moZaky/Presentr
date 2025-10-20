@@ -153,6 +153,9 @@
     </style>
 </head>
 <body class="min-h-screen gradient-bg">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <!-- Header -->
     <header class="glass-effect shadow-lg">
         <div class="container mx-auto px-4 py-4">
@@ -314,7 +317,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6m9 4h.01"></path>
                             </svg>
                             <div>
-                                <div class="font-medium text-gray-800">Sample Excel Data</div>
+                                <div class="font-medium text-gray-800">Sample Excel</div>
                                 <div class="text-sm text-gray-600">Data with chart information</div>
                             </div>
                         </div>
@@ -325,17 +328,13 @@
     </main>
 
     <!-- Footer -->
-    <footer class="glass-effect mt-16">
+    <footer class="glass-effect shadow-lg mt-16">
         <div class="container mx-auto px-4 py-6">
-            <div class="text-center text-gray-600">
-                <p>Presentr - PowerPoint AutoFill | Works Completely Offline</p>
-                <p class="text-sm mt-2">Transform your data into professional presentations instantly</p>
+            <div class="text-center">
+                <p class="text-gray-600">Presentr - PowerPoint AutoFill | Works Completely Offline</p>
             </div>
         </div>
     </footer>
-
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
 
     <script>
         // Global variables
@@ -350,21 +349,19 @@
             toast.className = `toast ${type}`;
             
             toast.innerHTML = `
-                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
                 <div class="toast-title">${title}</div>
                 <div class="toast-message">${message}</div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
             `;
             
             toastContainer.appendChild(toast);
             
             // Auto remove after 5 seconds
             setTimeout(() => {
-                toast.style.animation = 'slideOutRight 0.3s ease-out';
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                }, 300);
+                if (toast.parentElement) {
+                    toast.style.animation = 'slideOutRight 0.3s ease-out';
+                    setTimeout(() => toast.remove(), 300);
+                }
             }, 5000);
         }
 
@@ -373,14 +370,8 @@
             setupFileUpload();
             setupDragAndDrop();
             setupProcessButton();
-            setupDownloadButtons();
-            
-            // Add fade-in animation to elements
-            document.querySelectorAll('.fade-in').forEach((el, index) => {
-                setTimeout(() => {
-                    el.style.opacity = '1';
-                }, index * 200);
-            });
+            setupDownloadButton();
+            setupSampleDownloads();
         });
 
         // File upload setup
@@ -510,22 +501,14 @@
                     updateProgress(20, 'Reading Excel data...');
                     const excelData = await readExcelFile(excelFile);
                     
-                    updateProgress(40, 'Reading PowerPoint template...');
-                    const pptTemplate = await readPowerPointTemplate(pptFile);
-
-                    // Step 2: Process data
-                    updateProgress(60, 'Processing data and generating slides...');
+                    updateProgress(40, 'Processing data...');
                     const presentation = await createSimplePresentation(excelData);
 
-                    // Step 3: Generate charts
-                    updateProgress(80, 'Generating charts...');
-                    await generateCharts(presentation, excelData.chartData);
-
-                    // Step 4: Finalize presentation
-                    updateProgress(90, 'Finalizing presentation...');
+                    // Step 2: Generate presentation
+                    updateProgress(80, 'Generating presentation...');
                     generatedPresentation = presentation;
 
-                    // Step 5: Complete
+                    // Step 3: Complete
                     updateProgress(100, 'Complete!');
                     
                     showToast('Processing Complete', 'Your PowerPoint presentation has been generated successfully!', 'success');
@@ -545,6 +528,24 @@
                     processLoader.classList.add('hidden');
                     processBtnText.textContent = 'Process Files';
                     updateProcessButton();
+                }
+            });
+        }
+
+        // Setup download button
+        function setupDownloadButton() {
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.addEventListener('click', () => {
+                if (generatedPresentation) {
+                    generatedPresentation.writeFile({ fileName: 'generated_presentation.pptx' })
+                        .then(() => {
+                            showToast('Download Complete', 'PowerPoint presentation downloaded successfully!', 'success');
+                        })
+                        .catch(error => {
+                            showToast('Download Error', 'Failed to download presentation: ' + error.message, 'error');
+                        });
+                } else {
+                    showToast('Error', 'No presentation available for download', 'error');
                 }
             });
         }
@@ -579,7 +580,7 @@
                         }
 
                         // Read chart data sheet
-                        if (workbook.SheetNames.length > 1) {
+                        if (workbook.SheetNames.includes('ChartData')) {
                             const chartSheet = workbook.Sheets['ChartData'];
                             if (chartSheet) {
                                 const chartData = XLSX.utils.sheet_to_json(chartSheet);
@@ -591,24 +592,6 @@
                     } catch (error) {
                         reject(error);
                     }
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        // Read PowerPoint template (simplified)
-        async function readPowerPointTemplate(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // For now, we'll create a simple template
-                    resolve({
-                        slides: [
-                            { type: 'title', placeholders: ['{project_title}', '{name}'] },
-                            { type: 'content', placeholders: ['{status_update}'] },
-                            { type: 'agenda', placeholders: ['{agenda}'] }
-                        ]
-                    });
                 };
                 reader.readAsArrayBuffer(file);
             });
@@ -793,7 +776,16 @@
             });
             
             return chartData;
-          }
+        }
+
+        // Setup sample downloads
+        function setupSampleDownloads() {
+            // Sample PowerPoint download
+            document.getElementById('downloadSamplePPT').addEventListener('click', createSamplePowerPoint);
+            
+            // Sample Excel download
+            document.getElementById('downloadSampleExcel').addEventListener('click', createSampleExcel);
+        }
 
         // Create sample PowerPoint using PptxGenJS
         function createSamplePowerPoint() {
@@ -805,16 +797,6 @@
                 pptx.author = 'Presentr - PowerPoint AutoFill';
                 pptx.company = 'AutoFill System';
                 pptx.title = 'Sample PowerPoint Template';
-                
-                // Sample data for placeholders
-                const sampleData = {
-                    project_title: '{project_title}',
-                    name: '{name}',
-                    date: '{date}',
-                    status_update: '{status_update}',
-                    agenda: '{agenda}',
-                    ChartTitle: '{ChartTitle}'
-                };
                 
                 // Helper function to show placeholders
                 const showPlaceholders = (text) => text;
@@ -860,7 +842,7 @@
                     { x: 0.5, y: 1.5, w: 9, h: 4, fontSize: 18, color: '444444', valign: 'top', wrapText: true }
                 );
                 
-                // Slide 4: Chart Title Placeholder
+                // Slide 4: Chart Title
                 const slide4 = pptx.addSlide();
                 slide4.addText(
                     showPlaceholders('{ChartTitle}'),
@@ -869,57 +851,66 @@
                 
                 slide4.addText(
                     'This is a placeholder slide. The title above will be filled from your Excel data. Charts defined in the \'ChartData\' sheet will be added as new slides following this one.',
-                    { x: 0.5, y: 1.5, w: 9, h: 3, fontSize: 16, color: '666666', valign: 'top', wrapText: true }
+                    { x: 0.5, y: 1.5, w: 9, h: 2, fontSize: 16, color: '666666', valign: 'top', wrapText: true }
                 );
                 
-                // Generate and download the presentation
-                pptx.writeFile({ fileName: 'sample_template.pptx' }).then((fileName) => {
-                    showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
-                }).catch((error) => {
-                    console.error('Error generating PowerPoint:', error);
-                    showToast('Generation Error', 'Failed to generate PowerPoint template', 'error');
-                });
+                // Download the file
+                pptx.writeFile({ fileName: 'sample_template.pptx' })
+                    .then(() => {
+                        showToast('Sample Downloaded', 'Sample PowerPoint template downloaded successfully', 'success');
+                    })
+                    .catch(error => {
+                        showToast('Download Error', 'Failed to download sample: ' + error.message, 'error');
+                    });
                 
             } catch (error) {
-                console.error('Error in createSamplePowerPoint:', error);
+                console.error('Error creating sample PowerPoint:', error);
                 showToast('Error', 'Failed to create sample PowerPoint: ' + error.message, 'error');
             }
         }
+
+        // Create sample Excel file
         function createSampleExcel() {
-            const wb = XLSX.utils.book_new();
-            
-            // Main data sheet
-            const mainData = [
-                {
-                    name: 'zinab',
-                    project_title: 'DGE Review',
-                    status_update: 'All financial models have been updated, and the initial report draft is complete. We are on schedule for the board meeting next week.',
-                    agenda: 'Technology Stack System Context Design Decisions Mobile Application Features',
-                    ChartTitle: 'Analysis of Key Metrics'
-                }
-            ];
-            
-            const ws1 = XLSX.utils.json_to_sheet(mainData);
-            XLSX.utils.book_append_sheet(wb, ws1, 'Sheet1');
-            
-            // Chart data sheet
-            const chartData = [
-                { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q1', Label: '', Value: 150 },
-                { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q2', Label: '', Value: 200 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Jan', Value: 1200 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Feb', Value: 1800 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Jan', Value: 400 },
-                { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Feb', Value: 500 }
-            ];
-            
-            const ws2 = XLSX.utils.json_to_sheet(chartData);
-            XLSX.utils.book_append_sheet(wb, ws2, 'ChartData');
-            
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            
-            saveAs(blob, 'sample_data.xlsx');
-            showToast('Sample Downloaded', 'Sample Excel data downloaded successfully', 'success');
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                // Main data sheet
+                const mainData = [
+                    {
+                        name: 'zinab',
+                        project_title: 'DGE Review',
+                        status_update: 'All financial models have been updated, and the initial report draft is complete. We are on schedule for the board meeting next week.',
+                        agenda: 'Technology Stack System Context Design Decisions Mobile Application Features',
+                        ChartTitle: 'Analysis of Key Metrics'
+                    }
+                ];
+                
+                const ws1 = XLSX.utils.json_to_sheet(mainData);
+                XLSX.utils.book_append_sheet(wb, ws1, 'Sheet1');
+                
+                // Chart data sheet
+                const chartData = [
+                    { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q1', Label: '', Value: 150 },
+                    { ChartTitle: 'Quarterly Sales', ChartType: 'bar', Series: 'Q2', Label: '', Value: 200 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Jan', Value: 1200 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Likes', Label: 'Feb', Value: 1800 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Jan', Value: 400 },
+                    { ChartTitle: 'Engagement Metrics', ChartType: 'line', Series: 'Shares', Label: 'Feb', Value: 500 }
+                ];
+                
+                const ws2 = XLSX.utils.json_to_sheet(chartData);
+                XLSX.utils.book_append_sheet(wb, ws2, 'ChartData');
+                
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                
+                saveAs(blob, 'sample_data.xlsx');
+                showToast('Sample Downloaded', 'Sample Excel data downloaded successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error creating sample Excel:', error);
+                showToast('Error', 'Failed to create sample Excel: ' + error.message, 'error');
+            }
         }
     </script>
 </body>
