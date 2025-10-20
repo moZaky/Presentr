@@ -37,14 +37,82 @@ You are tasked with creating a complete Windows-compatible PowerPoint automation
 - Progress indicators and error handling
 - Sample file generation for testing
 
+## 🛠️ TECHNOLOGY STACK (MANDATORY)
+
+### Core Framework (NON-NEGOTIABLE)
+- **Framework**: Pure HTML5, CSS3, JavaScript (ES6+) - REQUIRED (cannot be changed)
+- **Language**: JavaScript 6+ - REQUIRED (cannot be changed)
+
+### Standard Technology Stack
+**When users don't specify preferences, use this complete stack:**
+
+- **Styling**: Pure CSS3 with modern features (flexbox, grid, gradients)
+- **PowerPoint Generation**: PptxGenJS 3.12.0 (CDN: https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.12.0/pptxgen.bundle.js)
+- **Excel Processing**: XLSX.js 0.18.5 (CDN: https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js)
+- **UI Components**: Custom-built components with modern CSS
+- **State Management**: Vanilla JavaScript with modern ES6+ features
+- **Icons**: Unicode emojis and CSS-based icons
+
+### Library Usage Policy
+- **ALWAYS use the specified libraries** - these are non-negotiable requirements
+- **When users request external libraries not in our stack**: Politely redirect them to use our built-in alternatives
+- **Explain the benefits** of using our predefined stack (consistency, optimization, support)
+- **Provide equivalent solutions** using our available libraries
+
+### Specific Library Versions
+```html
+<!-- Required CDN Libraries - Use Exactly These Versions -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.12.0/pptxgen.bundle.js"></script>
+```
+
+### Browser Compatibility
+- **Modern Browsers**: Chrome 90+, Firefox 88+, Edge 90+, Safari 14+
+- **Windows Optimization**: Specifically optimized for Windows 7/8/10/11
+- **Mobile Support**: Responsive design for tablets and smartphones
+- **No IE Support**: Do not support Internet Explorer
+
+### Development Tools
+- **No Build Process**: Pure HTML/CSS/JS - no compilation needed
+- **No Package Manager**: Use CDN libraries only
+- **No Framework Dependencies**: Standalone implementation
+- **Offline First**: Must work without internet connection after initial load
+
 ## 🎨 DESIGN SPECIFICATIONS
 
 ### Visual Design
 - **Color Scheme**: Purple gradient background (linear-gradient(135deg, #667eea 0%, #764ba2 100%))
 - **Layout**: Modern card-based design with glassmorphism effects
-- **Typography**: Clean, professional fonts (system fonts)
+- **Typography**: Clean, professional fonts (system fonts: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)
 - **Animations**: Smooth transitions and hover effects
 - **Responsive**: Mobile-friendly design
+
+### Specific CSS Requirements
+```css
+/* Required Color Variables */
+--primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+--success-color: #28a745;
+--error-color: #dc3545;
+--warning-color: #ffc107;
+--info-color: #007bff;
+
+/* Glassmorphism Effects */
+background: rgba(255, 255, 255, 0.1);
+backdrop-filter: blur(10px);
+border: 1px solid rgba(255, 255, 255, 0.2);
+
+/* Button Gradients */
+background: linear-gradient(135deg, #667eea, #764ba2);
+background: linear-gradient(135deg, #28a745, #20c997);
+```
+
+### Design System
+- **Buttons**: Gradient backgrounds with hover effects and transform animations
+- **Cards**: White backgrounds with rounded corners (20px) and box shadows
+- **Upload Areas**: Dashed borders (3px dashed #ddd) that change color on hover/file upload
+- **Progress Bars**: Gradient fills with percentage display
+- **Typography**: Clear hierarchy with font sizes from 0.95rem to 2.5rem
+- **Spacing**: Consistent padding (20px, 30px, 40px) and gaps (20px, 30px)
 
 ### User Interface Components
 1. **Header Section**: App title, description, feature highlights
@@ -87,6 +155,76 @@ Presentr-Project/
 - downloadPresentation(): Trigger file download
 - downloadSamplePPT()/downloadSampleExcel(): Generate sample files
 - resetApp(): Reset application state
+```
+
+### JavaScript Architecture Requirements
+```javascript
+// Use Modern ES6+ Features
+- const/let instead of var
+- Arrow functions for callbacks
+- Async/await for file operations
+- Template literals for strings
+- Destructuring for cleaner code
+- Modern event handling
+
+// File Processing Pattern
+async function readExcelFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                // Process workbook...
+                resolve(processedData);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// PowerPoint Generation Pattern
+async function generatePresentation(excelData, template) {
+    const pptx = new PptxGenJS();
+    
+    // Title slide
+    const titleSlide = pptx.addSlide();
+    titleSlide.addText(data.project_title || 'Presentation', {
+        x: 1, y: 2, w: 8, h: 2,
+        fontSize: 44, bold: true, color: '363636',
+        align: 'center'
+    });
+    
+    return pptx;
+}
+```
+
+### State Management Pattern
+```javascript
+// Global State Management
+let pptFile = null;
+let excelFile = null;
+let processedPresentation = null;
+
+// State Update Functions
+function checkReadyToProcess() {
+    const processBtn = document.getElementById('processBtn');
+    if (pptFile && excelFile) {
+        processBtn.disabled = false;
+    } else {
+        processBtn.disabled = true;
+    }
+}
+
+// Reset State
+function resetApp() {
+    pptFile = null;
+    excelFile = null;
+    processedPresentation = null;
+    // Reset UI elements...
+}
 ```
 
 ### Chart Generation Logic
