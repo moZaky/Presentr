@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+<<<<<<< HEAD
     "dev": "nodemon --exec \"npx tsx server.ts\" --watch server.ts --watch src --ext ts,tsx,js,jsx",
     "dev:log": "node scripts/log.js \"npm run dev\" dev.log",
     "build": "next build",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "start:log": "node scripts/log.js \"npm run start\" server.log",
+=======
+    "dev": "nodemon --exec \"npx tsx server.ts\" --watch server.ts --watch src --ext ts,tsx,js,jsx 2>&1 | tee dev.log",
+    "build": "next build",
+    "start": "NODE_ENV=production tsx server.ts 2>&1 | tee server.log",
+>>>>>>> 51a941674cbbd839c96702a44684f1bfa93793b7
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
@@ -57,7 +63,10 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+<<<<<<< HEAD
     "fast-xml-parser": "^5.3.0",
+=======
+>>>>>>> 51a941674cbbd839c96702a44684f1bfa93793b7
     "framer-motion": "^12.23.2",
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
@@ -101,7 +110,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+<<<<<<< HEAD
     "cross-env": "^7.0.3",
+=======
+>>>>>>> 51a941674cbbd839c96702a44684f1bfa93793b7
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "nodemon": "^3.1.10",
